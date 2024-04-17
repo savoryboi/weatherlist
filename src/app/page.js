@@ -81,7 +81,7 @@ function Home() {
 
   const getWeatherData = async (zip) => {
 
-      const { data } = await axios.get('http://api.weatherapi.com/v1/current.json', {
+      const { data } = await axios.get('https://api.weatherapi.com/v1/current.json', {
         params: {
           key: WEATHER_KEY,
           q: zip
