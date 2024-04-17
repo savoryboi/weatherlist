@@ -197,7 +197,7 @@ function Home() {
         `https://api.spotify.com/v1/users/${user_id}/playlists`,
         {
           name: location ? `${condition} | ${location}` : `${zip} | ${condition}`,
-          description: "created with weatherlist",
+          description: "created on weatherlist.vercel.app",
           public: false
         },
         {
