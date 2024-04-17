@@ -1,95 +1,281 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client"
 
-export default function Home() {
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+
+
+function Home() {
+
+
+  const AUTH_ENDPOINT = 'https://accounts.spotify.com/authorize';
+  const RESPONSE_TYPE = 'token';
+  const SCOPE = 'user-library-read playlist-modify-public playlist-modify-private playlist-read-private user-read-email user-top-read';
+  const CLIENT_ID = 'aa092daa853e4dc89e96a911305dc22f';
+  const WEATHER_KEY = '6e7bec65007f4f8a99f161659241304';
+
+  const REDIRECT_URI = 'http://localhost:3000/';
+
+  const [token, setToken] = useState("");
+  const [loginStatus, setLoginStatus] = useState(false);
+  const [zip, setZip] = useState('');
+  // const [location, setLocation] = useState('');
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    let token = window.localStorage.getItem("token");
+
+    if (!token && hash) {
+      token = hash.substring(1).split('&').find(elem => elem.startsWith('access_token')).split('=')[1];
+
+      window.location.hash = "";
+      window.localStorage.setItem("token", token)
+    }
+
+    setToken(token)
+  }, [])
+
+  const logout = () => {
+    setToken("");
+    window.localStorage.removeItem('token');
+
+  }
+
+  const initializeDataFetch = async (condition, location, target_dancability, target_energy, target_valence, target_mode, target_acousticness) => {
+    const { data } = await axios.get('https://api.spotify.com/v1/me/top/artists', {
+      params: {
+        limit: 3,
+        time_range: 'long_term'
+      },
+      headers: {
+        'Accept': "application/json",
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      }
+    });
+
+    const trackData = await axios.get('https://api.spotify.com/v1/me/top/tracks', {
+      params: {
+        limit: 2,
+        time_range: 'short_term'
+      },
+      headers: {
+        'Accept': "application/json",
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      }
+    })
+
+    const topTracks = trackData.data.items.map(track => track.id);
+    const topGenres = [...new Set(data.items.map(obj => obj.genres).flat())];
+    const seedGenres = [];
+    for (let i = 0; i < 3; i++) {
+      let random = Math.floor(Math.random() * topGenres.length);
+      seedGenres.push(encodeURIComponent(topGenres[random]));
+    }
+
+    console.log(seedGenres);
+
+    getRecomendations(condition, location, target_dancability, target_energy, target_valence, target_mode, target_acousticness, topTracks, seedGenres);
+  };
+
+  const getWeatherData = async (zip) => {
+
+      const { data } = await axios.get('http://api.weatherapi.com/v1/current.json', {
+        params: {
+          key: WEATHER_KEY,
+          q: zip
+        },
+        headers: {
+          config: 'Access-Control-Allow-Origin'
+        }
+      })
+
+    // setLocation(data.location.name);
+
+    const condition = data.current.condition.text;
+    const location = data.location.name;
+    const cloud = data.current.cloud;
+    const temp = data.current.feelslike_f;
+    const precip = data.current.precip_in > 0.175;
+    const uv = data.current.uv;
+    const humidity = data.current.humidity;
+
+    console.log(data)
+
+    let target_dancability,
+      target_energy,
+      target_valence,
+      target_mode,
+      target_acousticness;
+
+    // if its raining, minor key, and vice versa
+    if (!precip) {
+      target_mode = 1;
+    } else {
+      target_mode = 0;
+    };
+
+    // danceability determind by temp
+    target_dancability = (temp / 100) > 1 ? 1 : (temp / 100);
+
+    // energy of music determind by humidity 
+    target_energy = 1 - (humidity / 100);
+
+    // valence (aka happy feeling-ness) by clouds
+    target_valence = 1 - (cloud / 100);
+
+    // acoustincness by uv
+    if (uv < 3) {
+      target_acousticness = 0.5 + Math.random() * 0.5;
+    } else {
+      target_acousticness = Math.random() * 0.5;
+    };
+
+    initializeDataFetch(condition,
+      location,
+      target_dancability,
+      target_energy,
+      target_valence,
+      target_mode,
+      target_acousticness)
+  };
+
+  const getRecomendations = async (condition, location, target_dancability, target_energy, target_valence, target_mode, target_acousticness, topTracks, seedGenres) => {
+
+    try {
+      const response = await axios.get('https://api.spotify.com/v1/recommendations', {
+        params: {
+          limit: 50,
+          seed_genres: seedGenres.join(','),
+          seed_tracks: topTracks.join(','),
+          target_acousticness: target_acousticness,
+          target_dancability: target_dancability,
+          target_energy: target_energy,
+          target_valence: target_valence,
+          target_mode: target_mode
+        },
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        }
+      })
+
+      const recommendations = response.data.tracks.map(rec => rec.uri);
+      console.log(`recommendations:`)
+      console.log(recommendations)
+
+      getUserId(recommendations, condition, location);
+
+    } catch (error) {
+      console.error('Error getting recommendations:', error);
+      throw error;
+    }
+  };
+
+  const getUserId = async (recommendations, condition, location) => {
+    const user_profile = await axios.get('https://api.spotify.com/v1/me', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      }
+    })
+
+    const user_id = user_profile.data.id;
+
+    createPlaylist(user_id, recommendations, condition, location)
+  }
+
+  const createPlaylist = async (user_id, recommendations, condition, location) => {
+
+    console.log(location)
+    try {
+      const new_playlist = await axios.post(
+        `https://api.spotify.com/v1/users/${user_id}/playlists`,
+        {
+          name: location ? `${condition} | ${location}` : `${zip} | ${condition}`,
+          description: "created with weatherlist",
+          public: false
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      console.log('Created playlist:', new_playlist.data);
+      const new_playlist_id = new_playlist.data.id;
+
+      addSongsToPlaylist(new_playlist_id, recommendations);
+      return new_playlist.data;
+
+    } catch (error) {
+      console.error('Error creating playlist:', error);
+      throw error;
+    }
+
+
+  };
+
+  const addSongsToPlaylist = async (id, uris) => {
+
+    try {
+      const response = await axios.post(`https://api.spotify.com/v1/playlists/${id}/tracks`,
+        {
+          "uris": uris
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+      console.log(response)
+
+    } catch (error) {
+      console.log(error)
+    }
+
+  }
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    getWeatherData(zip)
+  }
+
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.js</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <main>
+      <div id='center_page'>
+      <h1 id='title'>weatherlist</h1>
+      {!token ?
+        <div className='login_wrapper'>
+          <h3>create playlists based on your local weather</h3>
+          <a id='loginLink' href={`${AUTH_ENDPOINT}?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=${SCOPE}&response_type=${RESPONSE_TYPE}&show_dialogue=true`}><button id='loginBtn'>login to spotify</button></a>
         </div>
-      </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
+        :
+        <div className='main_area'>
+          <h3 id='message_element'>enter your zipcode to create a weather-based playlist</h3>
+          <div className='form_wrap'>
+            <form id="zipcode-form" onSubmit={handleSubmit}>
+              <input
+                type="text"
+                name="zip_code_input"
+                value={zip}
+                onChange={(event) => setZip(event.target.value)}
+                placeholder='ZIP Code'
+              />
+              <button type="submit" id="zip_sbmt">GO</button>
+            </form>
+          </div>
+          <button id='logoutBtn' onClick={logout}>LOGOUT</button>
+        </div>
+      }
       </div>
     </main>
-  );
-}
+  )
+
+};
+
+export default Home;
