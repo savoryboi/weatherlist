@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import dotenv from 'dotenv';
 
 
 function Home() {
@@ -10,8 +11,8 @@ function Home() {
   const AUTH_ENDPOINT = 'https://accounts.spotify.com/authorize';
   const RESPONSE_TYPE = 'token';
   const SCOPE = 'user-library-read playlist-modify-public playlist-modify-private playlist-read-private user-read-email user-top-read';
-  const CLIENT_ID = 'aa092daa853e4dc89e96a911305dc22f';
-  const WEATHER_KEY = '6e7bec65007f4f8a99f161659241304';
+  const CLIENT_ID = process.env.NEXT_PUBLIC_CLIENT_ID;
+  const WEATHER_KEY = process.env.NEXT_PUBLIC_WEATHER_KEY;
 
   const REDIRECT_URI = 'http://localhost:3000/';
 
@@ -90,6 +91,7 @@ function Home() {
         }
       })
 
+      console.log(data)
     // setLocation(data.location.name);
 
     const condition = data.current.condition.text;
