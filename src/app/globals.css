@@ -62,24 +62,27 @@ h3 {
   color: whitesmoke;
 }
 form {
+  display: flex;
+
   justify-content: center;
 }
 
 input {
   margin: 20px auto;
-  width: 15em;
-  height: 3em;
+  width: 220px;
+  height: 50px;
   padding-left: 1em;
   border: 2px hotpink solid;
   border-right: none;
   border-radius: 10px 0px 0px 10px;
   color: hotpink;
   font-weight: bolder;
+  font-size: 16px;
   outline: none;
 }
 button {
   border: 2px solid hotpink;
-  margin: 20px auto;
+  margin: auto;
   transition: .2s;
   border-radius: 15px;
   background-color: hotpink;
@@ -101,12 +104,12 @@ button#loginBtn {
   font-size: 18px;
 }
 button#logoutBtn {
-  padding: .5em 2em;
+  padding: .75em 4em;
 }
 
 button#zip_sbmt {
-  height: 3em;
-  width: 5em;
+  height: 50px;
+  width: 70px;
   border-radius: 0px 10px 10px 0px;
   background-color: hotpink;
   color: azure;
