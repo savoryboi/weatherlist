@@ -118,6 +118,13 @@ div#playlist_link_div {
   border-radius: 15px;
   background-color: rgba(255, 105, 180, 0.364);
   transition: .4s;
+  display: flex;
+  flex-direction: row;
+}
+
+.option {
+  padding: 10px;
+  transition: .4s;
 }
 
 a#playlist_link {
@@ -128,13 +135,12 @@ a#playlist_link {
 }
 
 a#playlist_link:hover {
-  color: rgb(250, 152, 14);
+  color: rgb(57, 164, 3);
 }
 
 #start_over {
   text-align: center;
   color: whitesmoke;
-  margin-top: 1em;
   transition: 0.4s;
 }
 

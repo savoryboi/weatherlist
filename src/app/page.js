@@ -10,8 +10,8 @@ function Home() {
   const CLIENT_ID = process.env.NEXT_PUBLIC_CLIENT_ID;
   const WEATHER_KEY = process.env.NEXT_PUBLIC_WEATHER_KEY;
 
-  const REDIRECT_URI = 'https://weatherlist.vercel.app/';
-  // const REDIRECT_URI = 'http://localhost:3000/';
+  // const REDIRECT_URI = 'https://weatherlist.vercel.app/';
+  const REDIRECT_URI = 'http://localhost:3000/';
 
   const [token, setToken] = useState("");
   const [zip, setZip] = useState('');
@@ -79,66 +79,70 @@ function Home() {
   };
 
   const getWeatherData = async (zip) => {
+    try {
+      const { data } = await axios.get('https://api.weatherapi.com/v1/current.json', {
+        params: {
+          key: WEATHER_KEY,
+          q: zip
+        },
+        headers: {
+          config: 'Access-Control-Allow-Origin'
+        }
+      });
+      const condition = data.current.condition.text;
+      const location = data.location.name;
+      const cloud = data.current.cloud;
+      const temp = data.current.feelslike_f;
+      const precip = data.current.precip_in > 0.175;
+      const uv = data.current.uv;
+      const humidity = data.current.humidity;
 
-    const { data } = await axios.get('https://api.weatherapi.com/v1/current.json', {
-      params: {
-        key: WEATHER_KEY,
-        q: zip
-      },
-      headers: {
-        config: 'Access-Control-Allow-Origin'
-      }
-    })
+      console.log(data)
 
-    console.log(data)
-    // setLocation(data.location.name);
+      let target_dancability,
+        target_energy,
+        target_valence,
+        target_mode,
+        target_acousticness;
 
-    const condition = data.current.condition.text;
-    const location = data.location.name;
-    const cloud = data.current.cloud;
-    const temp = data.current.feelslike_f;
-    const precip = data.current.precip_in > 0.175;
-    const uv = data.current.uv;
-    const humidity = data.current.humidity;
+      // if its raining, minor key, and vice versa
+      if (!precip) {
+        target_mode = 1;
+      } else {
+        target_mode = 0;
+      };
 
-    console.log(data)
+      // danceability determind by temp
+      target_dancability = (temp / 100) > 1 ? 1 : (temp / 100);
 
-    let target_dancability,
-      target_energy,
-      target_valence,
-      target_mode,
-      target_acousticness;
+      // energy of music determind by humidity 
+      target_energy = 1 - (humidity / 100);
 
-    // if its raining, minor key, and vice versa
-    if (!precip) {
-      target_mode = 1;
-    } else {
-      target_mode = 0;
-    };
+      // valence (aka happy feeling-ness) by clouds
+      target_valence = 1 - (cloud / 100);
 
-    // danceability determind by temp
-    target_dancability = (temp / 100) > 1 ? 1 : (temp / 100);
+      // acoustincness by uv
+      if (uv < 3) {
+        target_acousticness = 0.5 + Math.random() * 0.5;
+      } else {
+        target_acousticness = Math.random() * 0.5;
+      };
 
-    // energy of music determind by humidity 
-    target_energy = 1 - (humidity / 100);
+      initializeDataFetch(condition,
+        location,
+        target_dancability,
+        target_energy,
+        target_valence,
+        target_mode,
+        target_acousticness);
 
-    // valence (aka happy feeling-ness) by clouds
-    target_valence = 1 - (cloud / 100);
+    } catch (error) {
 
-    // acoustincness by uv
-    if (uv < 3) {
-      target_acousticness = 0.5 + Math.random() * 0.5;
-    } else {
-      target_acousticness = Math.random() * 0.5;
-    };
+      console.error('error fetching weather: ', error)
+      const msg = document.querySelector('#message_element');
+      msg.textContent = 'Invalid location. Try again!';
+    }
 
-    initializeDataFetch(condition,
-      location,
-      target_dancability,
-      target_energy,
-      target_valence,
-      target_mode,
-      target_acousticness)
   };
 
   const getRecomendations = async (condition, location, target_dancability, target_energy, target_valence, target_mode, target_acousticness, topTracks, seedGenres) => {
@@ -226,32 +230,27 @@ function Home() {
 
     try {
       const response = await axios.post(`https://api.spotify.com/v1/playlists/${id}/tracks`,
-        {
-          "uris": uris
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-
+        { "uris": uris },
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      )
       console.log(response)
-
     } catch (error) {
       console.log(error)
     }
 
-  }
+  };
 
   const handleSubmit = (event) => {
     event.preventDefault();
     getWeatherData(zip)
-  }
+  };
 
   const handleStartOver = (event) => {
     event.preventDefault();
     setPlaylistCreated(false);
-  }
+  };
+
+  // logout();
 
 
   return (
@@ -264,28 +263,32 @@ function Home() {
             <a id='loginLink' href={`${AUTH_ENDPOINT}?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=${SCOPE}&response_type=${RESPONSE_TYPE}&show_dialogue=true`}><button id='loginBtn'>login to spotify</button></a>
           </div>
           : token && playlistCreated ?
-          <div id='playlist_link_div'>
-            <a id='playlist_link' target="_blank" href={playlistUrl}><h2>take me to my playlist</h2></a>
-            <h2 onClick={handleStartOver} id='start_over'>start over</h2>
-          </div>
-          : 
-          <div className='main_area'>
-            <h3 id='message_element'>enter your zipcode to create a weather-based playlist</h3>
-            <div className='form_wrap'>
-              <form id="zipcode-form" onSubmit={handleSubmit}>
-                <input
-                  type="text"
-                  name="zip_code_input"
-                  value={zip}
-                  onChange={(event) => setZip(event.target.value)}
-                  placeholder='ZIP Code'
-                />
-                <button type="submit" id="zip_sbmt">GO</button>
-              </form>
+            <div id='playlist_link_div'>
+              <div className='option'>
+                <a id='playlist_link' target="_blank" href={playlistUrl}><h2>LISTEN NOW</h2></a>
+              </div>
+              <div className='option'>
+                <h2 onClick={handleStartOver} id='start_over'>START OVER</h2>
+              </div>
             </div>
-            <button id='logoutBtn' onClick={logout}>LOGOUT</button>
-          </div>
-      
+            :
+            <div className='main_area'>
+              <h3 id='message_element'>enter your zipcode to create a weather-based playlist</h3>
+              <div className='form_wrap'>
+                <form id="zipcode-form" onSubmit={handleSubmit}>
+                  <input
+                    type="text"
+                    name="zip_code_input"
+                    value={zip}
+                    onChange={(event) => setZip(event.target.value)}
+                    placeholder='ZIP Code'
+                  />
+                  <button type="submit" id="zip_sbmt">GO</button>
+                </form>
+              </div>
+              <button id='logoutBtn' onClick={logout}>LOGOUT</button>
+            </div>
+
         }
       </div>
     </main>
