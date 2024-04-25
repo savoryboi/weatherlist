@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { metadata } from './layout';
 
 function Home() {
   const AUTH_ENDPOINT = 'https://accounts.spotify.com/authorize';
