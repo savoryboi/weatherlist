@@ -111,3 +111,34 @@ button#zip_sbmt {
   background-color: hotpink;
   color: azure;
 }
+
+div#playlist_link_div {
+  border: 2px hotpink solid;
+  padding: 1em;
+  border-radius: 15px;
+  background-color: rgba(255, 105, 180, 0.364);
+  transition: .4s;
+}
+
+a#playlist_link {
+  color: rgb(255, 69, 128);
+  text-decoration: none;
+  text-align: center;
+  transition: .4s;
+}
+
+a#playlist_link:hover {
+  color: rgb(250, 152, 14);
+}
+
+#start_over {
+  text-align: center;
+  color: whitesmoke;
+  margin-top: 1em;
+  transition: 0.4s;
+}
+
+#start_over:hover {
+  font-stretch: extra-expanded;
+  color: rgb(250, 152, 14);
+}

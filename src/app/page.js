@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import dotenv from 'dotenv';
 
 
 function Home() {
@@ -14,11 +13,14 @@ function Home() {
   const CLIENT_ID = process.env.NEXT_PUBLIC_CLIENT_ID;
   const WEATHER_KEY = process.env.NEXT_PUBLIC_WEATHER_KEY;
 
-  const REDIRECT_URI = 'https://weatherlist.vercel.app/' || 'http://localhost:3000/';
+  const REDIRECT_URI = 'https://weatherlist.vercel.app/';
+  // const REDIRECT_URI = 'http://localhost:3000/';
 
   const [token, setToken] = useState("");
-  const [loginStatus, setLoginStatus] = useState(false);
   const [zip, setZip] = useState('');
+  const [playlistCreated, setPlaylistCreated] = useState(false);
+  const [playlistUrl, setPlaylistUrl] = useState('');
+
   // const [location, setLocation] = useState('');
 
   useEffect(() => {
@@ -81,17 +83,17 @@ function Home() {
 
   const getWeatherData = async (zip) => {
 
-      const { data } = await axios.get('https://api.weatherapi.com/v1/current.json', {
-        params: {
-          key: WEATHER_KEY,
-          q: zip
-        },
-        headers: {
-          config: 'Access-Control-Allow-Origin'
-        }
-      })
+    const { data } = await axios.get('https://api.weatherapi.com/v1/current.json', {
+      params: {
+        key: WEATHER_KEY,
+        q: zip
+      },
+      headers: {
+        config: 'Access-Control-Allow-Origin'
+      }
+    })
 
-      console.log(data)
+    console.log(data)
     // setLocation(data.location.name);
 
     const condition = data.current.condition.text;
@@ -191,7 +193,6 @@ function Home() {
 
   const createPlaylist = async (user_id, recommendations, condition, location) => {
 
-    console.log(location)
     try {
       const new_playlist = await axios.post(
         `https://api.spotify.com/v1/users/${user_id}/playlists`,
@@ -206,10 +207,14 @@ function Home() {
           }
         }
       );
-      console.log('Created playlist:', new_playlist.data);
+      setPlaylistUrl(new_playlist.data.external_urls.spotify);
+      console.log('Created playlist:', playlistUrl);
       const new_playlist_id = new_playlist.data.id;
 
       addSongsToPlaylist(new_playlist_id, recommendations);
+
+      setPlaylistCreated(true);
+
       return new_playlist.data;
 
     } catch (error) {
@@ -246,34 +251,45 @@ function Home() {
     getWeatherData(zip)
   }
 
+  const handleStartOver = (event) => {
+    event.preventDefault();
+    setPlaylistCreated(false);
+  }
+
 
   return (
     <main>
       <div id='center_page'>
-      <h1 id='title'>weatherlist</h1>
-      {!token ?
-        <div className='login_wrapper'>
-          <h3>create playlists based on your local weather</h3>
-          <a id='loginLink' href={`${AUTH_ENDPOINT}?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=${SCOPE}&response_type=${RESPONSE_TYPE}&show_dialogue=true`}><button id='loginBtn'>login to spotify</button></a>
-        </div>
-        :
-        <div className='main_area'>
-          <h3 id='message_element'>enter your zipcode to create a weather-based playlist</h3>
-          <div className='form_wrap'>
-            <form id="zipcode-form" onSubmit={handleSubmit}>
-              <input
-                type="text"
-                name="zip_code_input"
-                value={zip}
-                onChange={(event) => setZip(event.target.value)}
-                placeholder='ZIP Code'
-              />
-              <button type="submit" id="zip_sbmt">GO</button>
-            </form>
+        <h1 id='title'>weatherlist</h1>
+        {!token ?
+          <div className='login_wrapper'>
+            <h3>create playlists based on your local weather</h3>
+            <a id='loginLink' href={`${AUTH_ENDPOINT}?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=${SCOPE}&response_type=${RESPONSE_TYPE}&show_dialogue=true`}><button id='loginBtn'>login to spotify</button></a>
           </div>
-          <button id='logoutBtn' onClick={logout}>LOGOUT</button>
-        </div>
-      }
+          : token && playlistCreated ?
+          <div id='playlist_link_div'>
+            <a id='playlist_link' target="_blank" href={playlistUrl}><h2>take me to my playlist</h2></a>
+            <h2 onClick={handleStartOver} id='start_over'>start over</h2>
+          </div>
+          : 
+          <div className='main_area'>
+            <h3 id='message_element'>enter your zipcode to create a weather-based playlist</h3>
+            <div className='form_wrap'>
+              <form id="zipcode-form" onSubmit={handleSubmit}>
+                <input
+                  type="text"
+                  name="zip_code_input"
+                  value={zip}
+                  onChange={(event) => setZip(event.target.value)}
+                  placeholder='ZIP Code'
+                />
+                <button type="submit" id="zip_sbmt">GO</button>
+              </form>
+            </div>
+            <button id='logoutBtn' onClick={logout}>LOGOUT</button>
+          </div>
+      
+        }
       </div>
     </main>
   )
