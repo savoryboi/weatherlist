@@ -2,11 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-
+import { metadata } from './layout';
 
 function Home() {
-
-
   const AUTH_ENDPOINT = 'https://accounts.spotify.com/authorize';
   const RESPONSE_TYPE = 'token';
   const SCOPE = 'user-library-read playlist-modify-public playlist-modify-private playlist-read-private user-read-email user-top-read';
