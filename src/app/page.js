@@ -32,50 +32,12 @@ function Home() {
     }
 
     setToken(token)
-  }, [])
+  }, []);
 
   const logout = () => {
     setToken("");
     window.localStorage.removeItem('token');
 
-  }
-
-  const initializeDataFetch = async (condition, location, target_dancability, target_energy, target_valence, target_mode, target_acousticness) => {
-    const { data } = await axios.get('https://api.spotify.com/v1/me/top/artists', {
-      params: {
-        limit: 3,
-        time_range: 'long_term'
-      },
-      headers: {
-        'Accept': "application/json",
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      }
-    });
-
-    const trackData = await axios.get('https://api.spotify.com/v1/me/top/tracks', {
-      params: {
-        limit: 2,
-        time_range: 'short_term'
-      },
-      headers: {
-        'Accept': "application/json",
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      }
-    })
-
-    const topTracks = trackData.data.items.map(track => track.id);
-    const topGenres = [...new Set(data.items.map(obj => obj.genres).flat())];
-    const seedGenres = [];
-    for (let i = 0; i < 3; i++) {
-      let random = Math.floor(Math.random() * topGenres.length);
-      seedGenres.push(encodeURIComponent(topGenres[random]));
-    }
-
-    console.log(seedGenres);
-
-    getRecomendations(condition, location, target_dancability, target_energy, target_valence, target_mode, target_acousticness, topTracks, seedGenres);
   };
 
   const getWeatherData = async (zip) => {
@@ -144,6 +106,44 @@ function Home() {
     }
 
   };
+
+  const initializeDataFetch = async (condition, location, target_dancability, target_energy, target_valence, target_mode, target_acousticness) => {
+    const { data } = await axios.get('https://api.spotify.com/v1/me/top/artists', {
+      params: {
+        limit: 2,
+        time_range: 'long_term'
+      },
+      headers: {
+        'Accept': "application/json",
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      }
+    });
+
+    const trackData = await axios.get('https://api.spotify.com/v1/me/top/tracks', {
+      params: {
+        limit: 3,
+        time_range: 'medium_term'
+      },
+      headers: {
+        'Accept': "application/json",
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      }
+    })
+
+    const topTracks = trackData.data.items.map(track => track.id);
+    const topGenres = [...new Set(data.items.map(obj => obj.genres).flat())];
+    const seedGenres = [];
+    for (let i = 0; i < 2; i++) {
+      seedGenres.push(encodeURIComponent(topGenres[i]));
+    }
+
+    console.log(seedGenres);
+
+    getRecomendations(condition, location, target_dancability, target_energy, target_valence, target_mode, target_acousticness, topTracks, seedGenres);
+  };
+
 
   const getRecomendations = async (condition, location, target_dancability, target_energy, target_valence, target_mode, target_acousticness, topTracks, seedGenres) => {
 
@@ -227,7 +227,6 @@ function Home() {
   };
 
   const addSongsToPlaylist = async (id, uris) => {
-
     try {
       const response = await axios.post(`https://api.spotify.com/v1/playlists/${id}/tracks`,
         { "uris": uris },
