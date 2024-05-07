@@ -10,8 +10,8 @@ function Home() {
   const CLIENT_ID = process.env.NEXT_PUBLIC_CLIENT_ID;
   const WEATHER_KEY = process.env.NEXT_PUBLIC_WEATHER_KEY;
 
-  // const REDIRECT_URI = 'https://weatherlist.vercel.app/';
-  const REDIRECT_URI = 'http://localhost:3000/';
+  const REDIRECT_URI = 'https://weatherlist.vercel.app/';
+  // const REDIRECT_URI = 'http://localhost:3000/';
 
   const [token, setToken] = useState("");
   const [zip, setZip] = useState('');
